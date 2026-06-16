@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#1b1f2a">
+<title>Mental Math</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #1b1f2a;
+    color: #f4f6fb;
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+    max-width: 540px;
+    margin: 0 auto;
+    min-height: 100%;
+  }
+
+  /* ---- Top bar: score + timer ---- */
+  .topbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    min-height: 34px;
+  }
+  .topbar .label { font-size: 17px; font-weight: 600; color: #9aa3b8; display: block; }
+  .topbar .val { font-size: 30px; }
+  #streak { color: #ffd166; }
+
+  /* ---- The problem ---- */
+  .problem {
+    width: 100%;
+    background: #2a3040;
+    border-radius: 18px;
+    padding: 32px 16px;
+    text-align: center;
+    font-size: 64px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 18px;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ---- Answer display ---- */
+  .answer {
+    width: 100%;
+    text-align: center;
+    font-size: 56px;
+    font-weight: 800;
+    height: 70px;
+    line-height: 70px;
+    margin-bottom: 10px;
+    color: #6fd3ff;
+    border-bottom: 4px solid #3a4156;
+  }
+  .answer.empty { color: #5a6178; }
+  .answer.right { color: #4ade80; border-color: #4ade80; }
+  .answer.wrong { color: #ff6b6b; border-color: #ff6b6b; }
+
+  /* ---- Keypad ---- */
+  .pad {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .key {
+    font-size: 38px;
+    font-weight: 700;
+    padding: 22px 0;
+    border: none;
+    border-radius: 16px;
+    background: #3a4156;
+    color: #f4f6fb;
+    cursor: pointer;
+    user-select: none;
+    transition: background .08s;
+  }
+  .key:active { background: #525b78; }
+  .key.go { background: #2f7d4f; color: #fff; }
+  .key.go:active { background: #3a9a62; }
+  .key.del { background: #7a3a3a; color: #fff; }
+  .key.del:active { background: #9a4747; }
+
+  /* ---- Controls row ---- */
+  .controls {
+    width: 100%;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .mode {
+    flex: 1;
+    font-size: 19px;
+    font-weight: 700;
+    padding: 14px 0;
+    border-radius: 14px;
+    border: 3px solid #3a4156;
+    background: transparent;
+    color: #9aa3b8;
+    cursor: pointer;
+  }
+  .mode.on {
+    background: #6fd3ff;
+    color: #11141c;
+    border-color: #6fd3ff;
+  }
+
+  .msg {
+    height: 26px;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  /* ---- Start / Game over overlay ---- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17,20,28,.96);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    z-index: 10;
+  }
+  .overlay h1 { font-size: 40px; margin: 0 0 8px; }
+  .overlay p { font-size: 22px; color: #c4cbdc; margin: 6px 0 26px; line-height: 1.4; }
+  .overlay .big {
+    font-size: 22px;
+    font-weight: 800;
+    padding: 20px 40px;
+    border: none;
+    border-radius: 16px;
+    background: #2f7d4f;
+    color: #fff;
+    cursor: pointer;
+  }
+  .overlay .big:active { background: #3a9a62; }
+  .hidden { display: none !important; }
+  .final { font-size: 70px; font-weight: 800; color: #ffd166; margin: 4px 0 0; }
+</style>
+</head>
+<body>
+
+  <!-- Difficulty/operation controls -->
+  <div class="controls">
+    <button class="mode on" data-op="add">+&nbsp;&minus;</button>
+    <button class="mode" data-op="mul">&times;</button>
+    <button class="mode" data-op="all">All</button>
+  </div>
+
+  <div class="topbar">
+    <div><span class="label">Score</span><span class="val" id="score">0</span></div>
+    <div style="text-align:center"><span class="label">Streak</span><span class="val" id="streak">0</span></div>
+    <div style="text-align:right"><span class="label">Time</span><span class="val" id="time">60</span></div>
+  </div>
+
+  <div class="problem" id="problem">7 + 8</div>
+  <div class="answer empty" id="answer">tap numbers</div>
+  <div class="msg" id="msg"></div>
+
+  <div class="pad">
+    <button class="key" data-n="1">1</button>
+    <button class="key" data-n="2">2</button>
+    <button class="key" data-n="3">3</button>
+    <button class="key" data-n="4">4</button>
+    <button class="key" data-n="5">5</button>
+    <button class="key" data-n="6">6</button>
+    <button class="key" data-n="7">7</button>
+    <button class="key" data-n="8">8</button>
+    <button class="key" data-n="9">9</button>
+    <button class="key del" id="del">&#9003;</button>
+    <button class="key" data-n="0">0</button>
+    <button class="key go" id="go">OK</button>
+  </div>
+
+  <!-- Start / End overlay -->
+  <div class="overlay" id="overlay">
+    <h1>Mental Math</h1>
+    <p>60 seconds.<br>How many can you solve?</p>
+    <div class="final hidden" id="finalScore"></div>
+    <p class="hidden" id="bestLine"></p>
+    <button class="big" id="startBtn">Start</button>
+  </div>
+
+<script>
+(function () {
+  var GAME_SECONDS = 60;
+
+  var op = "add";
+  var score = 0, streak = 0, best = 0;
+  var timeLeft = GAME_SECONDS;
+  var current = 0;        // correct answer
+  var entry = "";         // what the player typed
+  var timer = null;
+  var playing = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var problemEl = $("problem"), answerEl = $("answer"), msgEl = $("msg");
+  var scoreEl = $("score"), streakEl = $("streak"), timeEl = $("time");
+  var overlay = $("overlay"), finalScore = $("finalScore"), bestLine = $("bestLine");
+
+  // Safe storage — local files / private mode can make localStorage throw,
+  // so never let it break the rest of the game.
+  function loadBest() {
+    try { return parseInt(localStorage.getItem("mm_best") || "0", 10) || 0; }
+    catch (e) { return 0; }
+  }
+  function saveBest(v) {
+    try { localStorage.setItem("mm_best", String(v)); } catch (e) {}
+  }
+  best = loadBest();
+
+  function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+  function makeProblem() {
+    var kind = op;
+    if (op === "all") { kind = ["add", "sub", "mul"][rnd(0, 2)]; }
+    else if (op === "add") { kind = Math.random() < 0.5 ? "add" : "sub"; }
+
+    var a, b, text;
+    if (kind === "add") {
+      a = rnd(2, 49); b = rnd(2, 49);
+      current = a + b; text = a + " + " + b;
+    } else if (kind === "sub") {
+      a = rnd(5, 60); b = rnd(1, a);   // never negative
+      current = a - b; text = a + " − " + b;
+    } else { // mul
+      a = rnd(2, 12); b = rnd(2, 12);
+      current = a * b; text = a + " × " + b;
+    }
+    problemEl.textContent = text;
+    entry = "";
+    renderEntry();
+  }
+
+  function renderEntry() {
+    answerEl.className = "answer" + (entry === "" ? " empty" : "");
+    answerEl.textContent = entry === "" ? "tap numbers" : entry;
+  }
+
+  function flash(cls, txt) {
+    answerEl.className = "answer " + cls;
+    answerEl.textContent = txt;
+  }
+
+  function submit() {
+    if (!playing || entry === "") return;
+    if (parseInt(entry, 10) === current) {
+      score++; streak++;
+      scoreEl.textContent = score;
+      streakEl.textContent = streak;
+      msgEl.style.color = "#4ade80";
+      msgEl.textContent = streak >= 3 ? "Streak " + streak + "!" : "Correct";
+      flash("right", entry);
+      setTimeout(function () { if (playing) makeProblem(); }, 220);
+    } else {
+      streak = 0;
+      streakEl.textContent = streak;
+      msgEl.style.color = "#ff6b6b";
+      msgEl.textContent = "Answer: " + current;
+      flash("wrong", entry);
+      setTimeout(function () { if (playing) makeProblem(); }, 900);
+    }
+  }
+
+  function press(n) {
+    if (!playing) return;
+    if (entry.length >= 4) return;
+    entry += n;
+    msgEl.textContent = "";
+    renderEntry();
+  }
+
+  function del() {
+    if (!playing) return;
+    entry = entry.slice(0, -1);
+    renderEntry();
+  }
+
+  function tick() {
+    timeLeft--;
+    timeEl.textContent = timeLeft;
+    if (timeLeft <= 10) timeEl.style.color = "#ff6b6b";
+    if (timeLeft <= 0) endGame();
+  }
+
+  function startGame() {
+    score = 0; streak = 0; timeLeft = GAME_SECONDS;
+    scoreEl.textContent = "0";
+    streakEl.textContent = "0";
+    timeEl.textContent = timeLeft;
+    timeEl.style.color = "#f4f6fb";
+    msgEl.textContent = "";
+    playing = true;
+    overlay.classList.add("hidden");
+    makeProblem();
+    clearInterval(timer);
+    timer = setInterval(tick, 1000);
+  }
+
+  function endGame() {
+    playing = false;
+    clearInterval(timer);
+    problemEl.textContent = "Time!";
+    if (score > best) {
+      best = score;
+      saveBest(best);
+    }
+    finalScore.textContent = score;
+    finalScore.classList.remove("hidden");
+    bestLine.classList.remove("hidden");
+    bestLine.textContent = "Best: " + best;
+    $("startBtn").textContent = "Play again";
+    overlay.classList.remove("hidden");
+  }
+
+  // ---- wire up buttons ----
+  var keys = document.querySelectorAll(".key[data-n]");
+  for (var i = 0; i < keys.length; i++) {
+    (function (k) {
+      k.addEventListener("click", function () { press(k.getAttribute("data-n")); });
+    })(keys[i]);
+  }
+  $("del").addEventListener("click", del);
+  $("go").addEventListener("click", submit);
+  $("startBtn").addEventListener("click", startGame);
+
+  var modes = document.querySelectorAll(".mode");
+  for (var j = 0; j < modes.length; j++) {
+    (function (m) {
+      m.addEventListener("click", function () {
+        for (var k = 0; k < modes.length; k++) modes[k].classList.remove("on");
+        m.classList.add("on");
+        op = m.getAttribute("data-op");
+        if (playing) makeProblem();
+      });
+    })(modes[j]);
+  }
+
+  // optional physical keyboard support (for testing on a Mac)
+  document.addEventListener("keydown", function (e) {
+    if (!playing) { if (e.key === "Enter") startGame(); return; }
+    if (e.key >= "0" && e.key <= "9") press(e.key);
+    else if (e.key === "Enter" || e.key === "=") submit();
+    else if (e.key === "Backspace") del();
+  });
+})();
+</script>
+</body>
+</html>
