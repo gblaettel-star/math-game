@@ -163,18 +163,13 @@
     cursor: pointer;
   }
   .overlay .big:active { background: #3a9a62; }
+  .overlay .modeLabel { font-size: 15px; color: #9aa3b8; margin: 4px 0 10px; }
+  .overlay .controls { width: 100%; max-width: 320px; margin: 0 0 22px; }
   .hidden { display: none !important; }
   .final { font-size: 48px; font-weight: 800; color: #ffd166; margin: 4px 0 0; }
 </style>
 </head>
 <body>
-
-  <!-- Difficulty/operation controls -->
-  <div class="controls">
-    <button class="mode on" data-op="add">+&nbsp;&minus;</button>
-    <button class="mode" data-op="mul">&times;</button>
-    <button class="mode" data-op="all">All</button>
-  </div>
 
   <div class="topbar">
     <div><span class="label">Score</span><span class="val" id="score">0</span></div>
@@ -204,9 +199,16 @@
   <!-- Start / End overlay -->
   <div class="overlay" id="overlay">
     <h1>Mental Math</h1>
-    <p>60 seconds.<br>How many can you solve?</p>
     <div class="final hidden" id="finalScore"></div>
     <p class="hidden" id="bestLine"></p>
+    <p id="introLine">60 seconds.<br>How many can you solve?</p>
+    <p class="modeLabel">Choose what to practice:</p>
+    <div class="controls">
+      <button class="mode on" data-op="add">+&nbsp;&minus;</button>
+      <button class="mode" data-op="mul">&times;</button>
+      <button class="mode" data-op="div">&divide;</button>
+      <button class="mode" data-op="all">All</button>
+    </div>
     <button class="big" id="startBtn">Start</button>
   </div>
 
@@ -242,7 +244,7 @@
 
   function makeProblem() {
     var kind = op;
-    if (op === "all") { kind = ["add", "sub", "mul"][rnd(0, 2)]; }
+    if (op === "all") { kind = ["add", "sub", "mul", "div"][rnd(0, 3)]; }
     else if (op === "add") { kind = Math.random() < 0.5 ? "add" : "sub"; }
 
     var a, b, text;
@@ -252,9 +254,12 @@
     } else if (kind === "sub") {
       a = rnd(5, 60); b = rnd(1, a);   // never negative
       current = a - b; text = a + " − " + b;
-    } else { // mul
+    } else if (kind === "mul") {
       a = rnd(2, 12); b = rnd(2, 12);
       current = a * b; text = a + " × " + b;
+    } else { // div — always a whole-number answer
+      b = rnd(2, 12); current = rnd(2, 12);
+      a = b * current; text = a + " ÷ " + b;
     }
     problemEl.textContent = text;
     entry = "";
@@ -338,6 +343,7 @@
     finalScore.classList.remove("hidden");
     bestLine.classList.remove("hidden");
     bestLine.textContent = "Best: " + best;
+    $("introLine").classList.add("hidden");
     $("startBtn").textContent = "Play again";
     overlay.classList.remove("hidden");
   }
